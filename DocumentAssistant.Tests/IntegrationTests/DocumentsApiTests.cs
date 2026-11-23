@@ -88,4 +88,23 @@ public class DocumentsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task CreateDocument_ShouldReturnConflict_WhenNameAlreadyExistsWithDifferentCasing()
+    {
+        // Arrange
+        var firstRequest = new { Name = "Contrato duplicado" };
+        var secondRequest = new { Name = "CONTRATO DUPLICADO" };
+
+        // Act
+        var firstResponse = await _client.PostAsJsonAsync(
+            "/api/documents", firstRequest);
+
+        var secondResponse = await _client.PostAsJsonAsync(
+            "/api/documents", secondRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
+    }
+
 }
