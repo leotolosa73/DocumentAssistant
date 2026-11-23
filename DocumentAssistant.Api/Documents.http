@@ -1,0 +1,17 @@
+
+### Crear un documento
+POST http://localhost:5164/api/documents
+Content-Type: application/json
+
+{
+  "name": "Contrato de prueba"
+}
+
+### Obtener un documento por ID
+GET http://localhost:5164/api/documents/1
+
+### Documento inexistente
+GET http://localhost:5164/api/documents/99999
+
+### Probar manejo global de excepciones
+GET http://localhost:5164/api/test-exception
