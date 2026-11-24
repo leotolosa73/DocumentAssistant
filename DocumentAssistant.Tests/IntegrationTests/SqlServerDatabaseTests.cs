@@ -2,6 +2,8 @@
 using DocumentAssistant.Api.Models;
 using DocumentAssistant.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using DocumentAssistant.Api.Services;
+using Microsoft.Data.SqlClient;
 
 namespace DocumentAssistant.Tests.IntegrationTests;
 
@@ -57,7 +59,14 @@ public class SqlServerDatabaseTests
             var exception = await Assert.ThrowsAsync<DbUpdateException>(
                 () => context.SaveChangesAsync());
 
-            Assert.NotNull(exception.InnerException);
+            var sqlException = Assert.IsType<SqlException>(
+                exception.InnerException);
+
+            Assert.True(
+                sqlException.Number == 2601 || sqlException.Number == 2627);
+
+            Assert.True(
+                DocumentService.IsUniqueConstraintViolation(exception));
         }
     }
 }

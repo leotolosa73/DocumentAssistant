@@ -72,7 +72,7 @@ public class DocumentService : IDocumentService
                     cancellationToken);
         }
 
-    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
+    internal static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
         return exception.InnerException is SqlException sqlException &&
             (sqlException.Number == 2601 ||
