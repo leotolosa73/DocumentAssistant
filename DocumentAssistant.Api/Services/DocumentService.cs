@@ -18,13 +18,28 @@ public class DocumentService : IDocumentService
         _context = context;
     }
 
-    public async Task<List<Document>> GetDocumentsAsync(
+    
+    public async Task<PagedResponse<Document>> GetDocumentsAsync(
+        GetDocumentsRequest request,
         CancellationToken cancellationToken = default)
     {
-        return await _context.Documents
-            .AsNoTracking()
+        var query = _context.Documents.AsNoTracking();
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var documents = await query
+            .OrderBy(document => document.Id)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync(cancellationToken);
+
+        return new PagedResponse<Document>(
+            documents,
+            request.Page,
+            request.PageSize,
+            totalCount);
     }
+
 
     public async Task<Document> CreateDocumentAsync(
         CreateDocumentRequest request,

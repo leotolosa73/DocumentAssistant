@@ -18,19 +18,27 @@ public class DocumentsController : ControllerBase
         _documentService = documentService;
     }
 
+    
     [HttpGet]
-    public async Task<ActionResult<List<DocumentResponse>>> GetDocuments(
+    public async Task<ActionResult<PagedResponse<DocumentResponse>>> GetDocuments(
+        [FromQuery] GetDocumentsRequest request,
         CancellationToken cancellationToken)
     {
-        var documents = await _documentService.GetDocumentsAsync(
+        var result = await _documentService.GetDocumentsAsync(
+            request,
             cancellationToken);
 
-        var response = documents
-            .Select(document => document.ToResponse())
-            .ToList();
+        var response = new PagedResponse<DocumentResponse>(
+            result.Items
+                .Select(document => document.ToResponse())
+                .ToList(),
+            result.Page,
+            result.PageSize,
+            result.TotalCount);
 
         return Ok(response);
     }
+
 
     [HttpPost]
     public async Task<ActionResult<DocumentResponse>> CreateDocument(

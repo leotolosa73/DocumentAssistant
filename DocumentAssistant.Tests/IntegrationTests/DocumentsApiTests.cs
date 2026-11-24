@@ -107,4 +107,40 @@ public class DocumentsApiTests
         Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
     }
 
+
+    [Fact]
+    public async Task GetDocuments_ShouldReturnBadRequest_WhenPageIsZero()
+    {
+        // Arrange
+        using var factory = new CustomWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/documents?page=0");
+
+        // Assert
+        Assert.Equal(
+            System.Net.HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+
+    [Fact]
+    public async Task GetDocuments_ShouldReturnBadRequest_WhenPageSizeExceedsMaximum()
+    {
+        // Arrange
+        using var factory = new CustomWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/documents?pageSize=500");
+
+        // Assert
+        Assert.Equal(
+            System.Net.HttpStatusCode.BadRequest,
+            response.StatusCode);
+    }
+
+
+
 }

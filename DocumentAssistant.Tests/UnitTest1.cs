@@ -108,4 +108,141 @@ public async Task GetDocumentByIdAsync_ShouldReturnDocument_WhenDocumentExists()
     }
 
 
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldReturnFirstPage()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Documento A", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento B", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento C", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento D", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento E", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            Page = 1,
+            PageSize = 2
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(5, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
+
+        Assert.Equal("Documento A", result.Items[0].Name);
+        Assert.Equal("Documento B", result.Items[1].Name);
+    }
+
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldReturnSecondPage()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Documento A", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento B", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento C", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento D", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento E", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            Page = 2,
+            PageSize = 2
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(5, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
+
+        Assert.Equal("Documento C", result.Items[0].Name);
+        Assert.Equal("Documento D", result.Items[1].Name);
+    }
+
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldReturnEmptyItems_WhenPageIsOutOfRange()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Documento A", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento B", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento C", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            Page = 10,
+            PageSize = 2
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Empty(result.Items);
+        Assert.Equal(10, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(3, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+    }
+
+
+
 }

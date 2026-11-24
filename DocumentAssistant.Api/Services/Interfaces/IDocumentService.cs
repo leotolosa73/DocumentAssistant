@@ -1,3 +1,4 @@
+
 using DocumentAssistant.Api.Models;
 using DocumentAssistant.Api.DTOs.Documents;
 
@@ -5,7 +6,8 @@ namespace DocumentAssistant.Api.Services.Interfaces;
 
 public interface IDocumentService
 {
-    Task<List<Document>> GetDocumentsAsync(
+    Task<PagedResponse<Document>> GetDocumentsAsync(
+        GetDocumentsRequest request,
         CancellationToken cancellationToken = default);
 
     Task<Document> CreateDocumentAsync(
