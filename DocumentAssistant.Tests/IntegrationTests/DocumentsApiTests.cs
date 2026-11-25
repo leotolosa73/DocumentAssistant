@@ -15,8 +15,7 @@ public class DocumentsApiTests
 {
     private readonly HttpClient _client;
 
-    public DocumentsApiTests(
-        CustomWebApplicationFactory factory)
+    public DocumentsApiTests(CustomWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -57,8 +56,10 @@ public class DocumentsApiTests
             }
         };
 
-        var createdDocument = await response.Content.ReadFromJsonAsync<DocumentResponse>(
-            jsonOptions);
+        var createdDocument =
+            await response.Content.ReadFromJsonAsync<DocumentResponse>(
+                jsonOptions);
+
         Assert.NotNull(createdDocument);
         Assert.NotEqual(0, createdDocument.Id);
         Assert.Equal("Contrato de integración", createdDocument.Name);
@@ -92,55 +93,87 @@ public class DocumentsApiTests
     public async Task CreateDocument_ShouldReturnConflict_WhenNameAlreadyExistsWithDifferentCasing()
     {
         // Arrange
-        var firstRequest = new { Name = "Contrato duplicado" };
-        var secondRequest = new { Name = "CONTRATO DUPLICADO" };
+        var firstRequest = new
+        {
+            Name = "Contrato duplicado"
+        };
+
+        var secondRequest = new
+        {
+            Name = "CONTRATO DUPLICADO"
+        };
 
         // Act
         var firstResponse = await _client.PostAsJsonAsync(
-            "/api/documents", firstRequest);
+            "/api/documents",
+            firstRequest);
 
         var secondResponse = await _client.PostAsJsonAsync(
-            "/api/documents", secondRequest);
+            "/api/documents",
+            secondRequest);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
     }
 
-
     [Fact]
     public async Task GetDocuments_ShouldReturnBadRequest_WhenPageIsZero()
     {
-        // Arrange
-        using var factory = new CustomWebApplicationFactory();
-        using var client = factory.CreateClient();
-
         // Act
-        var response = await client.GetAsync("/api/documents?page=0");
+        var response = await _client.GetAsync(
+            "/api/documents?page=0");
 
         // Assert
-        Assert.Equal(
-            System.Net.HttpStatusCode.BadRequest,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
-
 
     [Fact]
     public async Task GetDocuments_ShouldReturnBadRequest_WhenPageSizeExceedsMaximum()
     {
-        // Arrange
-        using var factory = new CustomWebApplicationFactory();
-        using var client = factory.CreateClient();
-
         // Act
-        var response = await client.GetAsync("/api/documents?pageSize=500");
+        var response = await _client.GetAsync(
+            "/api/documents?pageSize=500");
 
         // Assert
-        Assert.Equal(
-            System.Net.HttpStatusCode.BadRequest,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetDocuments_ShouldReturnBadRequest_WhenSortByIsInvalid()
+    {
+        // Act
+        var response = await _client.GetAsync(
+            "/api/documents?sortBy=invalid");
 
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 
+    [Fact]
+    public async Task GetDocuments_ShouldReturnBadRequest_WhenSortDirectionIsInvalid()
+    {
+        // Act
+        var response = await _client.GetAsync(
+            "/api/documents?sortDirection=invalid");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetDocuments_ShouldReturnOk_WhenSortByIsUppercase()
+    {
+        var response = await _client.GetAsync("/api/documents?sortBy=NAME");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetDocuments_ShouldReturnOk_WhenSortDirectionIsUppercase()
+    {
+        var response = await _client.GetAsync("/api/documents?sortDirection=DESC");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 }

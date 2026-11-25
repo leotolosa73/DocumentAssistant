@@ -244,5 +244,267 @@ public async Task GetDocumentByIdAsync_ShouldReturnDocument_WhenDocumentExists()
     }
 
 
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldFilterByName()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
 
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Contrato de alquiler", Status = DocumentStatus.Pending },
+            new Document { Name = "Factura de electricidad", Status = DocumentStatus.Pending },
+            new Document { Name = "Contrato laboral", Status = DocumentStatus.Completed }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            Search = "Contrato"
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Contains(result.Items, document => document.Name == "Contrato de alquiler");
+        Assert.Contains(result.Items, document => document.Name == "Contrato laboral");
+    }
+
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldFilterByStatus()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Documento A", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento B", Status = DocumentStatus.Completed },
+            new Document { Name = "Documento C", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento D", Status = DocumentStatus.Failed }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            Status = DocumentStatus.Pending
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(2, result.TotalCount);
+
+        Assert.All(
+            result.Items,
+            document => Assert.Equal(DocumentStatus.Pending, document.Status));
+    }
+
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldSortByNameAscending()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Zebra", Status = DocumentStatus.Pending },
+            new Document { Name = "Alfa", Status = DocumentStatus.Pending },
+            new Document { Name = "Motor", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            SortBy = "name",
+            SortDirection = "asc"
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(3, result.Items.Count);
+
+        Assert.Equal("Alfa", result.Items[0].Name);
+        Assert.Equal("Motor", result.Items[1].Name);
+        Assert.Equal("Zebra", result.Items[2].Name);
+    }
+
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldSortByNameDescending()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Zebra", Status = DocumentStatus.Pending },
+            new Document { Name = "Alfa", Status = DocumentStatus.Pending },
+            new Document { Name = "Motor", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            SortBy = "name",
+            SortDirection = "desc"
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(3, result.Items.Count);
+
+        Assert.Equal("Zebra", result.Items[0].Name);
+        Assert.Equal("Motor", result.Items[1].Name);
+        Assert.Equal("Alfa", result.Items[2].Name);
+    }
+
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldApplyFiltersSortingAndPaginationTogether()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Contrato Delta", Status = DocumentStatus.Pending },
+            new Document { Name = "Contrato Alfa", Status = DocumentStatus.Pending },
+            new Document { Name = "Contrato Charlie", Status = DocumentStatus.Pending },
+            new Document { Name = "Contrato Bravo", Status = DocumentStatus.Pending },
+            new Document { Name = "Contrato Echo", Status = DocumentStatus.Completed },
+            new Document { Name = "Factura Alfa", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            Search = "Contrato",
+            Status = DocumentStatus.Pending,
+            SortBy = "name",
+            SortDirection = "asc",
+            Page = 2,
+            PageSize = 2
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(4, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+
+        Assert.Equal("Contrato Charlie", result.Items[0].Name);
+        Assert.Equal("Contrato Delta", result.Items[1].Name);
+    }
+
+    [Fact]
+    public async Task GetDocumentsAsync_ShouldUseIdAsSecondarySortCriteria()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        context.Documents.AddRange(
+            new Document { Name = "Documento A", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento B", Status = DocumentStatus.Pending },
+            new Document { Name = "Documento C", Status = DocumentStatus.Pending }
+        );
+
+        await context.SaveChangesAsync();
+
+        var expectedIds = await context.Documents
+            .OrderBy(document => document.Id)
+            .Select(document => document.Id)
+            .ToListAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new GetDocumentsRequest
+        {
+            SortBy = "status",
+            SortDirection = "asc"
+        };
+
+        // Act
+        var result = await service.GetDocumentsAsync(request);
+
+        // Assert
+        Assert.Equal(3, result.Items.Count);
+
+        Assert.Equal(
+            expectedIds,
+            result.Items.Select(document => document.Id).ToList());
+    }
 }

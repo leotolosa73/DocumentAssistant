@@ -17,18 +17,60 @@ public class DocumentService : IDocumentService
     {
         _context = context;
     }
-
     
     public async Task<PagedResponse<Document>> GetDocumentsAsync(
         GetDocumentsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Documents.AsNoTracking();
+        IQueryable<Document> query = _context.Documents.AsNoTracking();
 
+        // 1. Filter by name
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+
+            query = query.Where(document =>
+                document.Name.Contains(search));
+        }
+
+        // 2. Filter by status
+        if (request.Status.HasValue)
+        {
+            query = query.Where(document =>
+                document.Status == request.Status.Value);
+        }
+
+        // 3. Get total count after filtering
         var totalCount = await query.CountAsync(cancellationToken);
 
+        // 4. Apply sorting
+        query = (request.SortBy.ToLowerInvariant(),
+                request.SortDirection.ToLowerInvariant()) switch
+        {
+            ("name", "asc") => query
+                .OrderBy(document => document.Name)
+                .ThenBy(document => document.Id),
+
+            ("name", "desc") => query
+                .OrderByDescending(document => document.Name)
+                .ThenBy(document => document.Id),
+
+            ("status", "asc") => query
+                .OrderBy(document => document.Status)
+                .ThenBy(document => document.Id),
+
+            ("status", "desc") => query
+                .OrderByDescending(document => document.Status)
+                .ThenBy(document => document.Id),
+
+            ("id", "desc") => query.OrderByDescending(document => document.Id),
+
+            _ => query.OrderBy(document => document.Id)
+        };
+
+
+        // 5. Apply pagination
         var documents = await query
-            .OrderBy(document => document.Id)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync(cancellationToken);
@@ -39,7 +81,6 @@ public class DocumentService : IDocumentService
             request.PageSize,
             totalCount);
     }
-
 
     public async Task<Document> CreateDocumentAsync(
         CreateDocumentRequest request,
