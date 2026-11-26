@@ -308,4 +308,52 @@ public class DocumentsApiTests
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task DeleteDocument_ShouldReturnNoContent_WhenDocumentExists()
+    {
+        // Arrange
+        var createResponse = await _client.PostAsJsonAsync(
+            "/api/documents",
+            new { Name = "Contrato para eliminar mediante API" });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        var document = await createResponse.Content
+            .ReadFromJsonAsync<DocumentResponse>(jsonOptions);
+
+        Assert.NotNull(document);
+
+        // Act
+        var deleteResponse = await _client.DeleteAsync(
+            $"/api/documents/{document.Id}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        // Verify that the document no longer exists
+        var getResponse = await _client.GetAsync(
+            $"/api/documents/{document.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteDocument_ShouldReturnNotFound_WhenDocumentDoesNotExist()
+    {
+        // Arrange
+        const int nonExistingId = 99999;
+
+        // Act
+        var response = await _client.DeleteAsync(
+            $"/api/documents/{nonExistingId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

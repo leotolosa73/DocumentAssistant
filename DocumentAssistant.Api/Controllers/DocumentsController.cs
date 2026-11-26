@@ -90,4 +90,19 @@ public class DocumentsController : ControllerBase
 
         return Ok(document.ToResponse());
     }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteDocument(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await _documentService.DeleteDocumentAsync(
+            id,
+            cancellationToken);
+
+        if (!deleted)
+            return NotFound();
+
+        return NoContent();
+    }
 }

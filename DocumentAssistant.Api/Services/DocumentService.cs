@@ -172,4 +172,23 @@ public class DocumentService : IDocumentService
 
         return document;
     }
+
+    public async Task<bool> DeleteDocumentAsync(
+    int id,
+    CancellationToken cancellationToken = default)
+    {
+        var document = await _context.Documents
+            .FirstOrDefaultAsync(
+                document => document.Id == id,
+                cancellationToken);
+
+        if (document is null)
+            return false;
+
+        _context.Documents.Remove(document);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
 }

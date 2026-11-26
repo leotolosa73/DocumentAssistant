@@ -655,4 +655,65 @@ public async Task GetDocumentByIdAsync_ShouldReturnDocument_WhenDocumentExists()
         Assert.NotNull(result);
         Assert.Equal("Contrato original", result.Name);
     }
+
+    [Fact]
+    public async Task DeleteDocumentAsync_ShouldDeleteDocument_WhenDocumentExists()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var document = new Document
+        {
+            Name = "Contrato para eliminar",
+            Status = DocumentStatus.Pending
+        };
+
+        context.Documents.Add(document);
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        // Act
+        var result = await service.DeleteDocumentAsync(document.Id);
+
+        // Assert
+        Assert.True(result);
+
+        var deletedDocument = await context.Documents
+            .FindAsync(document.Id);
+
+        Assert.Null(deletedDocument);
+    }
+
+    [Fact]
+    public async Task DeleteDocumentAsync_ShouldReturnFalse_WhenDocumentDoesNotExist()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var service = new DocumentService(context);
+
+        // Act
+        var result = await service.DeleteDocumentAsync(99999);
+
+        // Assert
+        Assert.False(result);
+    }
+    
 }

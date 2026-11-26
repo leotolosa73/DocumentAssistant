@@ -22,4 +22,8 @@ public interface IDocumentService
         int id,
         UpdateDocumentRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteDocumentAsync(
+        int id,
+        CancellationToken cancellationToken = default);
 }
