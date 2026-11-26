@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using DocumentAssistant.Api.Models;
 using DocumentAssistant.Api.Enums;
+using DocumentAssistant.Api.Exceptions;
 using Xunit;
 
 namespace DocumentAssistant.Tests;
@@ -506,5 +507,152 @@ public async Task GetDocumentByIdAsync_ShouldReturnDocument_WhenDocumentExists()
         Assert.Equal(
             expectedIds,
             result.Items.Select(document => document.Id).ToList());
+    }
+
+    [Fact]
+    public async Task UpdateDocumentAsync_ShouldUpdateName_AndPreserveStatus()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var document = new Document
+        {
+            Name = "Contrato original",
+            Status = DocumentStatus.Completed
+        };
+
+        context.Documents.Add(document);
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new UpdateDocumentRequest
+        {
+            Name = "Contrato actualizado"
+        };
+
+        // Act
+        var result = await service.UpdateDocumentAsync(document.Id, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Contrato actualizado", result.Name);
+        Assert.Equal(DocumentStatus.Completed, result.Status);
+        Assert.Equal(document.Id, result.Id);
+    }
+
+    [Fact]
+    public async Task UpdateDocumentAsync_ShouldReturnNull_WhenDocumentDoesNotExist()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new UpdateDocumentRequest
+        {
+            Name = "Contrato actualizado"
+        };
+
+        // Act
+        var result = await service.UpdateDocumentAsync(99999, request);
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task UpdateDocumentAsync_ShouldThrowException_WhenNameAlreadyExists()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var firstDocument = new Document
+        {
+            Name = "Contrato A",
+            Status = DocumentStatus.Pending
+        };
+
+        var secondDocument = new Document
+        {
+            Name = "Contrato B",
+            Status = DocumentStatus.Completed
+        };
+
+        context.Documents.AddRange(firstDocument, secondDocument);
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new UpdateDocumentRequest
+        {
+            Name = "Contrato A"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<DocumentAlreadyExistsException>(
+            () => service.UpdateDocumentAsync(secondDocument.Id, request));
+    }
+
+    [Fact]
+    public async Task UpdateDocumentAsync_ShouldAllowKeepingSameName()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var document = new Document
+        {
+            Name = "Contrato original",
+            Status = DocumentStatus.Pending
+        };
+
+        context.Documents.Add(document);
+        await context.SaveChangesAsync();
+
+        var service = new DocumentService(context);
+
+        var request = new UpdateDocumentRequest
+        {
+            Name = "Contrato original"
+        };
+
+        // Act
+        var result = await service.UpdateDocumentAsync(document.Id, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Contrato original", result.Name);
     }
 }

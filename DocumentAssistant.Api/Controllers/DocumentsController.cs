@@ -73,4 +73,21 @@ public class DocumentsController : ControllerBase
 
         return Ok(document.ToResponse());
     }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<DocumentResponse>> UpdateDocument(
+        int id,
+        [FromBody] UpdateDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var document = await _documentService.UpdateDocumentAsync(
+            id,
+            request,
+            cancellationToken);
+
+        if (document is null)
+            return NotFound();
+
+        return Ok(document.ToResponse());
+    }
 }

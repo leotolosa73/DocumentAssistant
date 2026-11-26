@@ -17,4 +17,9 @@ public interface IDocumentService
     Task<Document?> GetDocumentByIdAsync(
         int id,
         CancellationToken cancellationToken = default);
+
+    Task<Document?> UpdateDocumentAsync(
+        int id,
+        UpdateDocumentRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -134,4 +134,42 @@ public class DocumentService : IDocumentService
             (sqlException.Number == 2601 ||
                 sqlException.Number == 2627);
     }
+
+    public async Task<Document?> UpdateDocumentAsync(
+    int id,
+    UpdateDocumentRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        var document = await _context.Documents
+            .FirstOrDefaultAsync(
+                document => document.Id == id,
+                cancellationToken);
+
+        if (document is null)
+            return null;
+
+        var documentExists = await _context.Documents
+            .AnyAsync(
+                existingDocument =>
+                    existingDocument.Id != id &&
+                    existingDocument.Name == request.Name,
+                cancellationToken);
+
+        if (documentExists)
+            throw new DocumentAlreadyExistsException(request.Name);
+
+        document.Name = request.Name;
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+            when (IsUniqueConstraintViolation(ex))
+        {
+            throw new DocumentAlreadyExistsException(request.Name);
+        }
+
+        return document;
+    }
 }

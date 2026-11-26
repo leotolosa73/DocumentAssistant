@@ -176,4 +176,136 @@ public class DocumentsApiTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task UpdateDocument_ShouldReturnOk_WhenDocumentExists()
+    {
+        // Arrange
+        var createRequest = new
+        {
+            Name = "Contrato para actualizar"
+        };
+
+        var createResponse = await _client.PostAsJsonAsync(
+            "/api/documents",
+            createRequest);
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        var createdDocument = await createResponse.Content
+            .ReadFromJsonAsync<DocumentResponse>(jsonOptions);
+
+        Assert.NotNull(createdDocument);
+
+        var updateRequest = new
+        {
+            Name = "Contrato actualizado"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync(
+            $"/api/documents/{createdDocument.Id}",
+            updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var updatedDocument = await response.Content
+            .ReadFromJsonAsync<DocumentResponse>(jsonOptions);
+
+        Assert.NotNull(updatedDocument);
+        Assert.Equal(createdDocument.Id, updatedDocument.Id);
+        Assert.Equal("Contrato actualizado", updatedDocument.Name);
+        Assert.Equal(DocumentStatus.Pending, updatedDocument.Status);
+    }
+
+    [Fact]
+    public async Task UpdateDocument_ShouldReturnNotFound_WhenDocumentDoesNotExist()
+    {
+        // Arrange
+        var updateRequest = new
+        {
+            Name = "Contrato inexistente"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync(
+            "/api/documents/99999",
+            updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateDocument_ShouldReturnConflict_WhenNameAlreadyExists()
+    {
+        // Arrange
+        var firstResponse = await _client.PostAsJsonAsync(
+            "/api/documents",
+            new { Name = "Contrato original A" });
+
+        var secondResponse = await _client.PostAsJsonAsync(
+            "/api/documents",
+            new { Name = "Contrato original B" });
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        var firstDocument = await firstResponse.Content
+            .ReadFromJsonAsync<DocumentResponse>(jsonOptions);
+
+        var secondDocument = await secondResponse.Content
+            .ReadFromJsonAsync<DocumentResponse>(jsonOptions);
+
+        Assert.NotNull(firstDocument);
+        Assert.NotNull(secondDocument);
+
+        // Act
+        var response = await _client.PutAsJsonAsync(
+            $"/api/documents/{secondDocument.Id}",
+            new { Name = firstDocument.Name });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateDocument_ShouldReturnBadRequest_WhenNameIsTooShort()
+    {
+        // Arrange
+        var createResponse = await _client.PostAsJsonAsync(
+            "/api/documents",
+            new { Name = "Contrato válido" });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        var document = await createResponse.Content
+            .ReadFromJsonAsync<DocumentResponse>(jsonOptions);
+
+        Assert.NotNull(document);
+
+        // Act
+        var response = await _client.PutAsJsonAsync(
+            $"/api/documents/{document.Id}",
+            new { Name = "AB" });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }
